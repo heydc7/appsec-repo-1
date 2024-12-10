@@ -1,0 +1,82 @@
+Part 3: Fuzzing and Coverage
+
+Actions:
+1. Compiled the giftcardreader with coverage options to track code execution and generated initial coverage data.
+2. cov1.gft: Created a test binary file (cov1.gft) with a new record type, resulting in an increase in code coverage to 38.46%.
+3. cov2.gft: Generated a second binary file (cov2.gft) with an animated message record, boosting coverage further to 56.04%.
+4. AFLplusplus: Copied the input test file to AFLplusplus and started fuzzing to detect crashes and hangs in the program.
+5. fuzzer1: Detected a crash from a missing null terminator in the message and added a function to ensure null termination before printing.
+6. fuzzer2: Implemented a check to skip processing of unknown record types to prevent segmentation faults and improve program stability.
+
+Files:
+1. giftcardreader.c
+2. giftcardreader.gcda
+3. giftcardreader.c.gcov
+4. gengift.py
+5. testcases/valid/cov1.gft
+6. testcases/valid/cov2.gft
+7. testcases/invalid/fuzzer1.gft
+8. testcases/invalid/fuzzer2.gft
+
+Description:
+
+### Initial Coverage
+1. Compiled giftcardreader with gcov options using gcc -g --coverage, enabling coverage tracking: `gcc -g --coverage giftcardreader.c -o giftcardreader`
+2. Executed giftcardreader with ./giftcardreader 1 examplefile.gft to run the program and collect coverage data: `./giftcardreader 1 examplefile.gft`
+3. Generated coverage data using gcov giftcardreader.gcda to analyze how much of the code was executed: `gcov giftcardreader.gcda`
+4. Opened coverage report using nano giftcardreader.c.gcov to view the detailed line-by-line execution coverage: `nano giftcardreader.c.gcov`
+5. Initial coverage result calculated at 36.81%, representing the percentage of the code covered during execution.
+
+### Coverage 1 (Increased to 38.46%)
+1. Generated a binary file (cov1.gft) with merchant ID, customer ID, one record, record size, record type 0xFF, and 32-byte message.
+2. By generating a new type of gift card data with the 0xFF record type, this test exercises more paths in the giftcardreader program during execution.
+3. When giftcardreader processes this input, it runs additional code paths that handle this specific record type, leading to increased code coverage from 36.81% to 38.46%.
+4. Generated a gift card using python3 gengift.py cov1.gft, producing a binary file with specific data for testing.
+5. Compiled the giftcardreader program with coverage options enabled by running gcc -g --coverage giftcardreader.c -o giftcardreader.
+6. Ran the giftcardreader program with the generated test file using ./giftcardreader 1 cov1.gft to execute the code with the new input.
+7. Analyzed coverage data by running gcov giftcardreader.gcda to calculate the new code coverage.
+8. Coverage increased to 38.46%, showing that the new input tested previously unexecuted code paths in the giftcardreader.
+
+### Coverage 2 (Increased to 56.04%)
+1. The script gengift.py generates a binary file (cov2.gft) containing gift card data. It includes the merchant ID ("GiftCardz.com"), customer ID, one record, record size, and a record type of animated message (0x03).
+2. The animated message consists of a 32-byte message and a 32-byte program. The generated binary data is then written to a file (cov2.gft).
+3. By creating a record of type animated message (0x03), this test triggers additional code paths related to animated message processing in the giftcardreader program.
+4. Specifically, it tests the functionality that handles the animated message and associated program, significantly increasing code coverage from 38.46% to 56.04%.
+5. Generated a binary file (cov2.gft) containing a record with type 0x03 (animated message).
+6. The animated message includes a 32-byte message and a 32-byte program.
+7. Running the giftcardreader on cov2.gft exercises new code paths for handling animated messages. Triggered additional code paths related to animated message processing in giftcardreader.
+8. Code coverage increased from 38.46% to 56.04%.
+
+### AFL Fuzzing
+1. Copied examplefile.gft to the input folder /i/ in AFLplusplus.
+2. Initiated AFLplusplus fuzzing with the command ./afl-fuzz -i i -o o -- ./giftcardreader 1 @@
+3. AFLplusplus started fuzzing the giftcardreader program using the provided example input(examplefile.gft).
+4. AFLplusplus detected 17 crashes & 1 hang during fuzzing.
+
+### Fuzzer 1: Missing Null Terminator
+1. The fuzzer detected a crash due to a missing null terminator in the message, causing printf to print beyond the expected boundary in the print_gift_card_info function.
+2. Fix: A function check_null_terminated_or_exit was added to ensure the message is null-terminated before printing; if not, the program exits to avoid undefined behavior or memory corruption.
+void check_null_terminated_or_exit(const char* message) {
+    int found_null_terminator = 0;
+    for (int i = 0; i < MAX_MESSAGE_LENGTH; ++i) {
+        if (message[i] == '\0') {
+            found_null_terminator = 1;
+            break;
+        }
+    }
+    if (!found_null_terminator) {
+        exit(1);
+    }
+}
+3. The check_null_terminated_or_exit function is called before printing the message, verifying its validity and preventing crashes from improperly formatted input.
+
+### Fuzzer 2: Handling Unknown Record Types
+1. The crash happens when the program attempts to access a message record that exceeds the expected size of 32 bytes, leading to a segmentation fault due to reading out of bounds.
+2. When an unknown record type (like type 4) is encountered, the program lacks proper handling, causing it to improperly read or interpret memory associated with that record, resulting in a crash.
+3. To fix this, an if check is added to verify if the record type is unknown (e.g., type 4).
+4. If the record type is unknown, the program prints a message indicating it is skipping that record and continues to the next one, avoiding invalid memory access.
+if (gcrd_ptr->type_of_record == 4) {
+    printf("Unknown record type: %d (skipping)\n", gcrd_ptr->type_of_record);
+    continue; // Skip this record and continue with the next one
+}
+

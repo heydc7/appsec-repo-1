@@ -1,0 +1,33 @@
+Part 1: Setting up Your Environment
+
+Actions:
+1. Installed Git and configured user settings for signing commits.
+2. Cloned the assignment repository from GitHub Classroom.
+3. Set up SSH key to authentication & signing commits
+4. Set up GitHub Actions to automatically build and test code.
+5. Created and pushed a tag for submission.
+
+Files:
+1. .github/workflows/hello.yml
+
+Description:
+1. Installed & set up Git: 
+Downloaded and installed Git using my local package manager to enable version control for the assignment repository.
+
+2. Set up SSH key access to the GitHub account: 
+Generated an SSH key pair and added the public key to my GitHub account to facilitate secure and password-less authentication for Git operations.
+
+3. Configured Git user settings to sign commits using SSH: 
+Executed the command `git config --global gpg.format ssh` to configure Git to use SSH for signing commits, ensuring code integrity and security.
+
+4. Set up GitHub Actions for printing "Hello World": 
+Created a continuous integration workflow to automatically trigger a simple job that prints "Hello World" each time a new commit is pushed to the repository.
+
+5. Created a .github/workflows/hello.yml file: 
+Defined the workflow in a YAML file to specify the actions to be taken during the GitHub Actions process, including the environment and command to run.
+
+6. Verified that the action was running correctly in the GitHub interface: 
+Checked the GitHub repository's Actions tab to confirm that the workflow executed successfully without errors upon each commit.
+
+7. Submitted this part of the assignment by tagging my progress: 
+Used Git tagging commands to mark my completion of Part 1, allowing for easy reference and submission of my work.

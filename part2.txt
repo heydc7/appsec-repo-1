@@ -1,0 +1,71 @@
+Part 2: Auditing and Test Cases
+
+Actions:
+1. Configured run.yml to trigger GitHub Actions to execute make test
+2. Crash 1 occurred due to writing a huge memory allocation size (0xFFFFFFFF), causing malloc to attempt an unrealistic allocation and crash.
+3. Crash 2 occurred when an out-of-bounds memory access was triggered by an invalid program instruction (\x01\x2f) accessing beyond the valid array size.
+4. A hang occurred due to an invalid jump instruction (\x09\xfd) that caused an infinite loop, making the program unresponsive.
+5. Crash 1 Fix: Added input validation to prevent invalid or excessively large memory allocation by checking if ret_val->num_bytes is negative before malloc
+6. Crash 2 Fix: Implemented boundary check in the animate function to prevent out-of-bounds memory access in the regs array.
+7. Hang Fix: Introduced checks to prevent invalid jumps in the animate function, avoiding infinite loops caused by large or out-of-range jump instructions.
+
+Files:
+1. gengift.py
+2. testcases/invalid/crash1.gft
+3. testcases/invalid/crash2.gft
+4. testcases/invalid/hang.gft
+5. giftcardreader.c
+6. .github/workflows/run.yml
+
+Description:
+0. Created GitHub Action for Regression Testing
+- The run.yml file is configured to trigger GitHub Actions to execute make test, ensuring that the fixed version of the code passes all tests and preventing future reintroduction of the bugs through regression testing.
+
+1. Crash 1: Invalid Memory Allocation due to Unchecked User Input
+- gengift.py - The code writes a huge value (0xFFFFFFFF) for the size of memory allocation. malloc tries to allocate this unrealistic amount of memory, causing a crash. Crash occurs due to the lack of validation on user input for memory size.
+- Location: The variable ret_val->num_bytes is read directly from the input file without validation and is used in a malloc call.
+- Problem: If the user provides a negative or excessively large value for ret_val->num_bytes, the program will attempt to allocate an invalid or huge block of memory, which can cause the program to crash or run out of memory.
+- Solution: Add a check to ensure that ret_val->num_bytes is not negative before proceeding with memory allocation.
+```
+if (ret_val->num_bytes < 0) {
+   exit(1); // Exit if an invalid negative value is detected
+}
+```
+- Explanation: By checking if ret_val->num_bytes is less than 0, the program avoids attempting to allocate a negative memory size, which would lead to a crash. The fix ensures that the memory allocation is only performed when ret_val->num_bytes is valid and non-negative.
+
+2. Crash 2: Out-of-Bounds Memory Access in animate Function
+- gengift.py: The code constructs a data file that includes a program with the instruction \x01\x2f, which attempts to access an element of the regs array beyond its bounds. Since arg1 can exceed the valid range of the regs array (0-15), it can cause a crash when the program tries to execute an out-of-bounds memory access.
+- Location: The animate function uses an array regs with a fixed size of 16. The program accesses this array based on arguments passed by the user (e.g., arg1), but there is no check to ensure that these arguments are within valid bounds.
+- Problem: If arg1 exceeds the valid range (0-15), the program will attempt to access memory outside the bounds of the regs array. This can lead to undefined behavior, crashes, or security vulnerabilities like buffer overflows.
+- Solution: Add a boundary check to ensure that arg1 is within the valid range (0-15) before accessing the regs array.
+```
+case 0x01:
+    // Crash 2 Fix
+    if (arg1 < 16) {
+        regs[arg1] = *mptr;
+    } else {
+        fprintf(stderr, "Wrong Register Number: %d\n", arg1); // Handle invalid access
+        exit(1); // Exit if the register number is invalid
+    }
+    break;
+```
+- Explanation: The fix ensures that arg1 is always within the valid range for the regs array. If an invalid register number is provided, the program outputs an error message and exits to prevent out-of-bounds access. This prevents crashes caused by attempts to access memory beyond the allocated array.
+
+3. Hang: Infinite Loop Caused by Invalid Jump Instruction
+- gengift.py: The code creates a data file containing a payload that includes the instruction \x09\xfd, which represents a jump operation that directs the program's execution beyond a specified range. This leads to an infinite loop when executed, causing the program to hang indefinitely by repeatedly sending control back to the same instruction and preventing any further progress.
+- Location: The animate function has a jump instruction handler (case 0x09), which processes a jump based on the argument arg1. If the argument is too large, the program can jump far beyond the intended bounds, causing an infinite loop or leading to a situation where the program keeps jumping back and forth, effectively hanging.
+- Problem: The payload \x09\xfd instructs a large jump, directing the program counter to jump backwards or forwards beyond its valid range. This results in an infinite loop, where the program gets stuck repeating the same instructions without making progress, causing the program to hang and become unresponsive.
+- Solution: Add a boundary check to prevent the program counter (pc) from jumping too far beyond the start or end of the program. If an invalid jump is detected, the program should gracefully handle it by printing an error message and exiting.
+```
+case 0x09:
+    // Fix for the Hang
+    if ((signed char)arg1 < 0 && pc - program < (unsigned char)arg1) {
+        fprintf(stderr, "Jump over start" %d\n", (signed char)arg1);
+        exit(1); // Prevent jumping beyond the start of the program
+    } else if ((signed char)arg1 > 0 && program + 256 - pc <= (unsigned char)arg1) {
+        fprintf(stderr, "Jump over end: %d\n", (signed char)arg1);
+        exit(1); // Prevent jumping beyond the end of the program
+    }
+    pc += (signed char)arg1; // Perform the jump if it's valid
+    break;
+```
